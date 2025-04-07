@@ -21,4 +21,15 @@ class ChessBoard {
     private var whiteToMove: Boolean = true
     private var moveCount: Int = 0
     private var canEnPassant: Boolean = false
+
+    fun processMove(move: Pair<Coordinate, Coordinate>) {
+        val pieceType = Pieces.pieceType(this, move.first)
+        if (pieceType?.validMove(this, move) == true) {
+            makeMove(move)
+        }
+    }
+
+    private fun makeMove(move: Pair<Coordinate, Coordinate>) {
+
+    }
 }
