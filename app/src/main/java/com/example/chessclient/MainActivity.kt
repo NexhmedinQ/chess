@@ -9,14 +9,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
-import com.example.chessclient.data.BoardState
+import com.example.chessclient.data.Player
+import com.example.chessclient.data.UIBoardState
+import com.example.chessclient.data.UIState
+import com.example.chessclient.data.generateMoves
 import com.example.chessclient.ui.theme.ChessClientTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlin.math.min
@@ -28,16 +33,42 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ChessClientTheme {
-                Board(BoardState())
+                Board(UIBoardState(), Player.WHITE)
             }
         }
     }
 }
 
 @Composable
-fun Board(boardState: BoardState) {
+fun Board(uiState: UIBoardState, player: Player) {
     val context = LocalContext.current
-    Canvas(modifier = Modifier.padding(top = 100.dp).fillMaxSize()) {
+    Canvas(modifier = Modifier
+        .padding(top = 100.dp)
+        .fillMaxSize()
+        .pointerInput(true) {
+            detectTapGestures {
+                val boardSize = min(size.width, size.height)
+                val x = (8 * it.x / boardSize).toInt()
+                val y = (8 * it.y / boardSize).toInt()
+                val tappedField = 8 * y + x
+                when (uiState.uiState) {
+                    UIState.WAITING -> {}
+                    UIState.TURN -> {
+                        if (player == uiState.boardState.playerTurn) {
+                            val moves = generateMoves(uiState.boardState, tappedField)
+                            uiState = UIBoardState(boardState = uiState.boardState, clicked = tappedField, possibleMoves = moves, uiState = UIState.CLICKED)
+                        }
+                        // if clicked square with your coloured piece generate all the moves that piece can make and change the state
+                    }
+                    UIState.CLICKED -> {
+                        // if clicking opponent piece / square you are able to move to, move to the square and make backend call
+                        // if clicking own piece unselect
+                        // if clicking own piece (but different) generate moves for that other piece and select
+                    }
+                }
+            }
+        }
+    ) {
         val boardSize = min(size.width, size.height)
         var isLight = true
         for (i in 0..7) {
@@ -47,14 +78,12 @@ fun Board(boardState: BoardState) {
                         size = Size(width = boardSize / 8, height = boardSize / 8)
                 )
                 val boardIndex = (j + (i * 8)).toULong()
-                println(boardIndex)
-                println(boardState.positions.blacks shl boardIndex.toInt())
-                val image: Int? = if ((boardState.positions.blacks shr boardIndex.toInt()) and 1uL == 1uL) {
-                    boardState.positions.pieceMap.entries
+                val image: Int? = if ((uiState.boardState.positions.colourMap.getValue(Player.BLACK) shr boardIndex.toInt()) and 1uL == 1uL) {
+                    uiState.boardState.positions.pieceMap.entries
                                         .firstOrNull { pieceEntry -> (pieceEntry.value shr boardIndex.toInt()) and 1uL == 1uL }
                                         ?.key?.blackImageId
-                } else if ((boardState.positions.whites shr boardIndex.toInt()) and 1uL == 1uL) {
-                    boardState.positions.pieceMap.entries
+                } else if ((uiState.boardState.positions.colourMap.getValue(Player.WHITE) shr boardIndex.toInt()) and 1uL == 1uL) {
+                    uiState.boardState.positions.pieceMap.entries
                         .firstOrNull { pieceEntry -> (pieceEntry.value shr boardIndex.toInt()) and 1uL == 1uL }
                         ?.key?.whiteImageId
                 } else {
