@@ -78,10 +78,11 @@ fun Board(uiState: UIBoardState, player: Player) {
                         size = Size(width = boardSize / 8, height = boardSize / 8)
                 )
                 val boardIndex = (j + (i * 8)).toULong()
-                val image: Int? = if ((uiState.boardState.positions.colourMap.getValue(Player.BLACK) shr boardIndex.toInt()) and 1uL == 1uL) {
+                val image: Int? =
+                    if ((uiState.boardState.positions.colourMap.getValue(Player.BLACK) shr boardIndex.toInt()) and 1uL == 1uL) {
                     uiState.boardState.positions.pieceMap.entries
-                                        .firstOrNull { pieceEntry -> (pieceEntry.value shr boardIndex.toInt()) and 1uL == 1uL }
-                                        ?.key?.blackImageId
+                        .firstOrNull { pieceEntry -> (pieceEntry.value shr boardIndex.toInt()) and 1uL == 1uL }
+                        ?.key?.blackImageId
                 } else if ((uiState.boardState.positions.colourMap.getValue(Player.WHITE) shr boardIndex.toInt()) and 1uL == 1uL) {
                     uiState.boardState.positions.pieceMap.entries
                         .firstOrNull { pieceEntry -> (pieceEntry.value shr boardIndex.toInt()) and 1uL == 1uL }
@@ -89,6 +90,7 @@ fun Board(uiState: UIBoardState, player: Player) {
                 } else {
                     null
                 }
+
                 image
                     ?.let { drawImage(
                         image = ImageBitmap.imageResource(id = image, res = context.resources),

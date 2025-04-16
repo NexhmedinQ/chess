@@ -1,3 +1,8 @@
 package com.example.chessclient.data
 
-data class Move(val from: Int, val to: Int)
+enum class MoveType {
+    QUIET,
+    CAPTURE
+}
+
+data class Move(val from: Int, val to: Int, val moveType: MoveType)

@@ -6,4 +6,11 @@ data class BoardState(val positions: Positions = Positions(),
 enum class Player {
     WHITE,
     BLACK
+    ;
+    operator fun not(): Player {
+        return when(this) {
+            WHITE -> BLACK
+            BLACK -> WHITE
+        }
+    }
 }
