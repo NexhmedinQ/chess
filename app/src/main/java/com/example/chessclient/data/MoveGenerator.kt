@@ -64,22 +64,21 @@ private fun generatePawnCaptures(boardState: BoardState, piece: ULong, player: P
     return mutableListOf<Move>().apply {
         when(player) {
             Player.WHITE -> {
-                if (shift(piece, NORTH + WEST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
-                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, NORTH + WEST).countTrailingZeroBits(), MoveType.CAPTURE))
-                }
-                if (shift(piece, NORTH + EAST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
-                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, NORTH + EAST).countTrailingZeroBits(), MoveType.CAPTURE))
-                }
+                generatePawnCaptureHelper(NORTH, this, boardState, piece, player)
             }
             Player.BLACK -> {
-                if (shift(piece, SOUTH + WEST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
-                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, SOUTH + WEST).countTrailingZeroBits(), MoveType.CAPTURE))
-                }
-                if (shift(piece, SOUTH + EAST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
-                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, SOUTH + EAST).countTrailingZeroBits(), MoveType.CAPTURE))
-                }
+                generatePawnCaptureHelper(SOUTH, this, boardState, piece, player)
             }
         }
+    }
+}
+
+private fun generatePawnCaptureHelper(dir: Int, moves: MutableList<Move>, boardState: BoardState, piece: ULong, player: Player) {
+    if (piece.countTrailingZeroBits() % 8 != 0 && (shift(piece, dir + WEST) and boardState.positions.colourMap.getValue(!player) != 0uL)) {
+        moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir + WEST).countTrailingZeroBits(), MoveType.CAPTURE))
+    }
+    if (shift(piece, dir + EAST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
+        moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir + EAST).countTrailingZeroBits(), MoveType.CAPTURE))
     }
 }
 
@@ -98,11 +97,14 @@ private fun generateQuietPawnMoves(boardState: BoardState, piece: ULong, player:
 
 private fun shiftPawnPiece(moves: MutableList<Move>, player: Player, dir: Int, piece: ULong, colourMap: Map<Player, ULong>, rowTwo: Int) {
     // single row move
-    if (shift(piece, dir) and colourMap.getValue(!player) == 0uL) {
+    if (shift(piece, dir) and colourMap.getValue(!player) == 0uL
+        && shift(piece, dir) and colourMap.getValue(player) == 0uL) {
         moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir).countTrailingZeroBits(), MoveType.QUIET))
     }
     // double shift when pawn is at starting pos
-    if (piece.countTrailingZeroBits() / 8 == rowTwo && (shift(piece, dir + dir) and colourMap.getValue(!player) == 0uL)) {
+    if (piece.countTrailingZeroBits() / 8 == rowTwo
+        && (shift(piece, dir + dir) and colourMap.getValue(!player) == 0uL)
+        && (shift(piece, dir + dir) and colourMap.getValue(player) == 0uL)) {
         moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir + dir).countTrailingZeroBits(), MoveType.QUIET))
     }
 }
