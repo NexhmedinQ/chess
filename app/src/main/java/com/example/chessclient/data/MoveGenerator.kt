@@ -5,9 +5,9 @@ const val SOUTH = 8
 const val EAST = 1
 const val WEST = -1
 
-private fun Pieces.generate(boardState: BoardState, pieceIndex: Int): List<Move> {
+private fun Pieces.generate(boardState: BoardState, piece: ULong): List<Move> {
     return when(this) {
-        Pieces.PAWN -> generatePawnMoves(boardState, pieceIndex)
+        Pieces.PAWN -> generatePawnMoves(boardState, piece)
         Pieces.QUEEN -> TODO()
         Pieces.KNIGHT -> TODO()
         Pieces.KING -> TODO()
@@ -16,55 +16,102 @@ private fun Pieces.generate(boardState: BoardState, pieceIndex: Int): List<Move>
     }
 }
 
-fun generateMoves(boardState: BoardState, pieceIndex: Int): List<Move>? {
-    val piece = boardState.positions.pieceMap.entries
-        .find { (it.value shr pieceIndex) and 1uL != 0uL }
-        ?.key
-    return piece?.generate(boardState, pieceIndex)
+fun makeMove(move: Move, positions: Positions, player: Player): Positions {
+    val piece = 1uL shl move.from
+    val pieceType = positions.pieceMap.entries
+        .find { (it.value and piece) != 0uL }
+        ?.key!!
+    val newPieceMap = positions.copy().pieceMap.toMutableMap()
+    val newColourMap = positions.copy().colourMap.toMutableMap()
+    // remove old position
+    newPieceMap[pieceType] = newPieceMap[pieceType]!! xor piece
+    newColourMap[player] = newColourMap[player]!! xor piece
+    // add new position
+    val newPiece = 1uL shl move.to
+    newPieceMap[pieceType] = newPieceMap[pieceType]!! or newPiece
+    newColourMap[player] = newColourMap[player]!! or newPiece
+
+    // remove captured piece
+    if (move.moveType == MoveType.CAPTURE) {
+        newColourMap[!player] = newColourMap[!player]!! xor newPiece
+        val capturedPieceType = positions.pieceMap.entries
+            .find { (it.value and newPiece) != 0uL }
+            ?.key!!
+        if (capturedPieceType != pieceType) {
+            newPieceMap[capturedPieceType] = newPieceMap[capturedPieceType]!! xor newPiece
+        }
+    }
+    return Positions(newColourMap, newPieceMap)
 }
 
-private fun generatePawnMoves(boardState: BoardState, pieceIndex: Int): List<Move> {
-    val player = if ((boardState.positions.colourMap.getValue(Player.BLACK) shr pieceIndex) and 1uL == 1uL) {
+fun generateMoves(boardState: BoardState, piece: ULong): List<Move>? {
+    val pieceType = boardState.positions.pieceMap.entries
+        .find { (it.value and piece) != 0uL }
+        ?.key
+    return pieceType?.generate(boardState, piece)
+}
+
+private fun generatePawnMoves(boardState: BoardState, piece: ULong): List<Move> {
+    val player = if ((boardState.positions.colourMap.getValue(Player.BLACK) and piece) != 0uL) {
         Player.BLACK
     } else {
         Player.WHITE
     }
-    return generatePawnCaptures(boardState, pieceIndex, player) + generateQuietPawnMoves(boardState, pieceIndex, player)
+    return generatePawnCaptures(boardState, piece, player) + generateQuietPawnMoves(boardState, piece, player)
 }
 
-private fun generatePawnCaptures(boardState: BoardState, pieceIndex: Int, player: Player): List<Move> {
-    return emptyList()
-}
-
-private fun generateQuietPawnMoves(boardState: BoardState, pieceIndex: Int, player: Player): List<Move> {
-    mutableListOf<Move>().apply {
+private fun generatePawnCaptures(boardState: BoardState, piece: ULong, player: Player): List<Move> {
+    return mutableListOf<Move>().apply {
         when(player) {
             Player.WHITE -> {
-                shiftPawnPiece(this, player, NORTH, pieceIndex, boardState.positions.colourMap)
+                if (shift(piece, NORTH + WEST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
+                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, NORTH + WEST).countTrailingZeroBits(), MoveType.CAPTURE))
+                }
+                if (shift(piece, NORTH + EAST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
+                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, NORTH + EAST).countTrailingZeroBits(), MoveType.CAPTURE))
+                }
             }
             Player.BLACK -> {
-                shiftPawnPiece(this, player, SOUTH, pieceIndex, boardState.positions.colourMap)
+                if (shift(piece, SOUTH + WEST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
+                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, SOUTH + WEST).countTrailingZeroBits(), MoveType.CAPTURE))
+                }
+                if (shift(piece, SOUTH + EAST) and boardState.positions.colourMap.getValue(!player) != 0uL) {
+                    this.add(Move(piece.countTrailingZeroBits(), shift(piece, SOUTH + EAST).countTrailingZeroBits(), MoveType.CAPTURE))
+                }
             }
         }
     }
 }
 
-private fun shiftPawnPiece(moves: MutableList<Move>, player: Player, dir: Int, pieceIndex: Int, colourMap: Map<Player, ULong>) {
-    // single row move
-    if (shift(pieceIndex, dir) and colourMap.getValue(!player).toInt() != 0) {
-        moves.add(Move(pieceIndex, shift(pieceIndex, dir), MoveType.QUIET))
-    }
-    // double shift when pawn is at starting pos
-    if (pieceIndex / 8 == 6 && (shift(pieceIndex, dir + dir) and colourMap.getValue(!player).toInt() != 0)) {
-        moves.add(Move(pieceIndex, shift(pieceIndex, dir + dir), MoveType.QUIET))
+private fun generateQuietPawnMoves(boardState: BoardState, piece: ULong, player: Player): List<Move> {
+    return mutableListOf<Move>().apply {
+        when(player) {
+            Player.WHITE -> {
+                shiftPawnPiece(this, player, NORTH, piece, boardState.positions.colourMap, 6)
+            }
+            Player.BLACK -> {
+                shiftPawnPiece(this, player, SOUTH, piece, boardState.positions.colourMap, 1)
+            }
+        }
     }
 }
 
-private fun shift(board: Int, n: Int): Int {
+private fun shiftPawnPiece(moves: MutableList<Move>, player: Player, dir: Int, piece: ULong, colourMap: Map<Player, ULong>, rowTwo: Int) {
+    // single row move
+    if (shift(piece, dir) and colourMap.getValue(!player) == 0uL) {
+        moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir).countTrailingZeroBits(), MoveType.QUIET))
+    }
+    // double shift when pawn is at starting pos
+    if (piece.countTrailingZeroBits() / 8 == rowTwo && (shift(piece, dir + dir) and colourMap.getValue(!player) == 0uL)) {
+        moves.add(Move(piece.countTrailingZeroBits(), shift(piece, dir + dir).countTrailingZeroBits(), MoveType.QUIET))
+    }
+}
+
+private fun shift(piece: ULong, n: Int): ULong {
     return if (n >= 0) {
-        board shr(n)
+        piece shl(n)
     } else {
-        board shl(-n)
+        piece shr(-n)
     }
 
 }
