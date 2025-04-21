@@ -16,11 +16,11 @@ const val FILE_H = 0b0000_0001_0000_0001_0000_0001_0000_0001_0000_0001_0000_0001
 private fun Pieces.generate(boardState: BoardState, piece: ULong, player: Player): List<Move> {
     return when(this) {
         Pieces.PAWN -> generatePawnMoves(boardState, piece, player)
-        Pieces.QUEEN -> TODO()
+        Pieces.QUEEN -> generateQueenMove(boardState, piece, player)
         Pieces.KNIGHT -> generateKnightMoves(boardState, piece, player)
         Pieces.KING -> generateKingMoves(boardState, piece, player)
-        Pieces.BISHOP -> TODO()
-        Pieces.ROOK -> TODO()
+        Pieces.BISHOP -> generateBishopMoves(boardState, piece, player)
+        Pieces.ROOK -> generateRookMoves(boardState, piece, player)
     }
 }
 
@@ -57,9 +57,23 @@ fun generateMoves(boardState: BoardState, piece: ULong): List<Move>? {
         .find { (it.value and piece) != 0uL }
         ?.key
     val player = getPlayer(boardState, piece)
-    println("Piece type is $pieceType")
     return pieceType?.generate(boardState, piece, player)
 }
+
+private fun generateRookMoves(boardState: BoardState, piece: ULong, player: Player): List<Move> {
+    // generate along rank and file in both directions (so need 4 calcs which will all be very similar)
+    return emptyList()
+}
+
+private fun generateBishopMoves(boardState: BoardState, piece: ULong, player: Player): List<Move> {
+    // generate along diag left to right and right to left
+    return emptyList()
+}
+
+private fun generateQueenMove(boardState: BoardState, piece: ULong, player: Player): List<Move> {
+    return generateBishopMoves(boardState, piece, player) + generateRookMoves(boardState, piece, player)
+}
+
 
 private fun generatePawnMoves(boardState: BoardState, piece: ULong, player: Player): List<Move> {
     return generatePawnCaptures(boardState, piece, player) + generateQuietPawnMoves(boardState, piece, player)
@@ -174,7 +188,7 @@ private fun extractMoves(boardState: BoardState, bitboard: ULong, player: Player
         moves.add(
             Move(from = piece.countTrailingZeroBits(),
             to = leadingCount - 1,
-            moveType = if (boardState.positions.colourMap.getValue(!player) and (1uL shl leadingCount) != 0uL) MoveType.CAPTURE else MoveType.QUIET
+            moveType = if (boardState.positions.colourMap.getValue(!player) and (1uL shl (leadingCount - 1)) != 0uL) MoveType.CAPTURE else MoveType.QUIET
             )
         )
         board = board shr (trailingZeros + 1)
